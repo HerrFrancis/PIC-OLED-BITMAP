@@ -1,13 +1,13 @@
 // Boilerplate configuration //
-#include <16F887.h>
-#fuses XT, NOWDT, NOPROTECT, BROWNOUT                       
-#use delay(clock = 4MHz)
-#use I2C(MASTER, I2C1, FAST = 400000, stream = SSD1306_STREAM)
+#include <16F877A.h>
+#fuses HS, NOWDT, NOPROTECT, BROWNOUT    
+#use delay(clock = 20MHz)
+#use I2C(MASTER, I2C1, FAST = 100000, stream = SSD1306_STREAM)
 
 // Libraries //
    // Include SSD1306 OLED driver source code
-   #define SSD1306_128_64
-   #include <SSD1306.c>    
+   #define SSD1306_128_64 // You have to specify which model you are using
+   #include <oled.c>    
 
 const uint8_t bitmap[] = { // size 32 bytes, width 16, height 2.
 0x00, 0xFE, 0x56, 0x56, 0x02, 0xFA, 0xF2, 0xEA, 0xEA, 0xF2, 0xFA, 0x02, 0x56, 0x56, 0xFE, 0x00,
@@ -156,42 +156,58 @@ const uint8_t herr[] = { // size 1024 bytes, width 128, height 8.
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
+
 void main()
 {
    // Initialize the SSD1306 OLED with an I2C addr = 0x7A (default address)
-   SSD1306_Init(SSD1306_SWITCHCAPVCC, 0x78); // SSD1306_I2C_ADDRESS
+   oledBegin(SSD1306_SWITCHCAPVCC, 0x78); // SSD1306_I2C_ADDRESS
    
-   // like and subscribe
-   SSD1306_Bitmap(&like);
+   // prints like and subscribe bitmap on the entire screen (that's why the x, y parameter aren't set to anything)
+   oledBitmap(&like, 128, 8);
    delay_ms(3500);
-   SSD1306_ClearDisplay();
-   SSD1306_GotoXY(1, 3);
-   SSD1306_PutC("Thanks for your");
-   SSD1306_GotoXY(1, 4);
-   SSD1306_PutC("attention :D");
+   oledClear(); // Clear the screen
+   oledXY(0, 0); // Change the cursor to first column, first row
+   oledPrint("Thanks for"); // Prints the first part of the message...
+   oledXY(0, 1);
+   oledPrint("downloading"); // the second part...
+   oledXY(0, 2);
+   oledPrint("this driver :D"); // the last part.
    delay_ms(2000);
-   SSD1306_Bitmap(&herr);
+   oledXY(0,0);
+   oledPrint("Lorem ipsum dolor sit amet, consectetur adipiscing elit.");
+   oledPrint("Sed pharetra turpis mauris, sit amet rhoncus mauris bibendum eget.");
+   oledPrint("In porta purus ex. Nam non vulputate lorem.");
+   delay_ms(3000);
+   oledBitmap(&herr, 128, 8); // Prints the bitmap
    delay_ms(3500);
    
-   
-   for (int x = 0; x < 128; x = x + 16)
+   // Fills the screen with tiny IC bitmaps
+   for (int x = 0; x < 128; x = x + 16) 
    {
-      for (int y = 0; y < 4; y = y + 2)
+      for (int y = 0; y < 8; y = y + 2)
       {
-         SSD1306_TinyBitmap(&bitmap, x, y, 16, 2);
-         delay_ms(300);
+         oledBitmap(&bitmap, 16, 2, x, y); // You change the position via x and y, that is the top-left corner of the bitmap
+         delay_ms(250);
       }
    }
-   SSD1306_ClearDisplay();
-   SSD1306_TinyBitmap(&bitmap, 0, 0, 16, 2);
-   SSD1306_StartScrollRight(0, 3);
+   oledClear();
+   oledBitmap(&bitmap, 16, 2); // Draws IC bitmap
+   oledScrollRight(0, 7); // Everything from line 0 to 7 will scroll rightwards
    delay_ms(2500);
+   oledScrollLeft(0, 7); // now leftwards
+   delay_ms(2500);
+   oledStopScroll(); // and then stops.
    
    // Pacman
-   SSD1306_ClearDisplay(0xFF);
-   SSD1306_StartScrollRight(0, 3);
-   SSD1306_TinyBitmap(&pacman, 0, 1, 16, 2);
+   oledClear(0xFF); // Clear the entire screen with white background
+   oledScrollRight(0, 7); // Scroll rightwards
+   oledClear(0xFF); // Clear again
+   delay_ms(100);
+   oledBitmap(&pacman, 16, 2, 0, 1); // Print Pacman bitmap at firt column, second row
    delay_ms(1500);
-   SSD1306_TinyBitmap(&ghost, 0, 1, 16, 2);
+   oledBitmap(&ghost, 16, 2, 0, 1); // print a Ghost at the same location...
+   delay_ms(1500);
+   oledBitmap(&ghost, 16, 2, 0, 1); // Again
+   delay_ms(1500);
+   oledBitmap(&ghost, 16, 2, 0, 1); // And again.
 }
-
