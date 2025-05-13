@@ -5,10 +5,10 @@
                                                                               
  http://simple-circuit.com/                                                   
                                                                               
- This is a optimized and enhanced version of the original driver              
+ This is an optimized and enhanced version of the original driver              
  which was downloaded from:
  https://simple-circuit.com/pic16f877a-ssd1306-oled-display/
- Modified in 2025 by Herr Technik (Youtube: Herr Technik)
+ Modified in 2025 by Herr Francis (Youtube: Herr Technik)
                                   E-mail: contactotransistorizedmx@gmail.com
 *******************************************************************************/
 
@@ -78,11 +78,11 @@
 #define SSD1306_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL  0x2A
 
 
-uint8_t _i2caddr, _vccstate, x_pos = 1, y_pos = 1;
+uint8_t _i2caddr, _vccstate, x_pos = 0, y_pos = 0;
 
 //--------------------------------------------------------------------------//
 
-int1 wrap = TRUE;
+uint8_t wrap = 1;
 
 const char Font[] = {
 0x00, 0x00, 0x00, 0x00, 0x00, // blank
@@ -184,8 +184,10 @@ const char Font2[] = {
 0x02, 0x01, 0x02, 0x04, 0x02  // ~
 };
 
-
-void ssd1306_command(uint8_t c) {
+// Function used to send commands to the Oled display as
+// a single byte
+void oledCommand(uint8_t c) 
+{
     uint8_t control = 0x00;   // Co = 0, D/C = 0
     I2C_Start(SSD1306_STREAM);
     I2C_Write(SSD1306_STREAM, _i2caddr);
@@ -194,7 +196,10 @@ void ssd1306_command(uint8_t c) {
     I2C_Stop(SSD1306_STREAM);
 }
 
-void SSD1306_Init(uint8_t vccstate = SSD1306_SWITCHCAPVCC, uint8_t i2caddr = SSD1306_I2C_ADDRESS) {
+// The user must call this function before calling any other functions
+// because this function configures the display
+void oledBegin(uint8_t vccstate = SSD1306_SWITCHCAPVCC, uint8_t i2caddr = SSD1306_I2C_ADDRESS) 
+{
   _vccstate = vccstate;
   _i2caddr  = i2caddr;
   #ifdef SSD1306_RST
@@ -204,124 +209,133 @@ void SSD1306_Init(uint8_t vccstate = SSD1306_SWITCHCAPVCC, uint8_t i2caddr = SSD
     output_high(SSD1306_RST);
   #endif
   // Init sequence
-  ssd1306_command(SSD1306_DISPLAYOFF);                    // 0xAE
-  ssd1306_command(SSD1306_SETDISPLAYCLOCKDIV);            // 0xD5
-  ssd1306_command(0x80);                                  // the suggested ratio 0x80
+  oledCommand(SSD1306_DISPLAYOFF);                    // 0xAE
+  oledCommand(SSD1306_SETDISPLAYCLOCKDIV);            // 0xD5
+  oledCommand(0x80);                                  // the suggested ratio 0x80
 
-  ssd1306_command(SSD1306_SETMULTIPLEX);                  // 0xA8
-  ssd1306_command(SSD1306_LCDHEIGHT - 1);
+  oledCommand(SSD1306_SETMULTIPLEX);                  // 0xA8
+  oledCommand(SSD1306_LCDHEIGHT - 1);
 
-  ssd1306_command(SSD1306_SETDISPLAYOFFSET);              // 0xD3
-  ssd1306_command(0x0);                                   // no offset
-  ssd1306_command(SSD1306_SETSTARTLINE | 0x0);            // line #0
-  ssd1306_command(SSD1306_CHARGEPUMP);                    // 0x8D
+  oledCommand(SSD1306_SETDISPLAYOFFSET);              // 0xD3
+  oledCommand(0x0);                                   // no offset
+  oledCommand(SSD1306_SETSTARTLINE | 0x0);            // line #0
+  oledCommand(SSD1306_CHARGEPUMP);                    // 0x8D
   if (vccstate == SSD1306_EXTERNALVCC)
-    { ssd1306_command(0x10); }
+    { oledCommand(0x10); }
   else
-    { ssd1306_command(0x14); }
-  ssd1306_command(SSD1306_MEMORYMODE);                    // 0x20
-  ssd1306_command(0x00);                                  // 0x0 act like ks0108
-  ssd1306_command(SSD1306_SEGREMAP | 0x1);
-  ssd1306_command(SSD1306_COMSCANDEC);
+    { oledCommand(0x14); }
+  oledCommand(SSD1306_MEMORYMODE);                    // 0x20
+  oledCommand(0x00);                                  // 0x0 act like ks0108
+  oledCommand(SSD1306_SEGREMAP | 0x1);
+  oledCommand(SSD1306_COMSCANDEC);
 
  #if defined SSD1306_128_32
-  ssd1306_command(SSD1306_SETCOMPINS);                    // 0xDA
-  ssd1306_command(0x02);
-  ssd1306_command(SSD1306_SETCONTRAST);                   // 0x81
-  ssd1306_command(0x8F);
+  oledCommand(SSD1306_SETCOMPINS);                    // 0xDA
+  oledCommand(0x02);
+  oledCommand(SSD1306_SETCONTRAST);                   // 0x81
+  oledCommand(0x8F);
 
 #elif defined SSD1306_128_64
-  ssd1306_command(SSD1306_SETCOMPINS);                    // 0xDA
-  ssd1306_command(0x12);
-  ssd1306_command(SSD1306_SETCONTRAST);                   // 0x81
+  oledCommand(SSD1306_SETCOMPINS);                    // 0xDA
+  oledCommand(0x12);
+  oledCommand(SSD1306_SETCONTRAST);                   // 0x81
   if (vccstate == SSD1306_EXTERNALVCC)
-    { ssd1306_command(0x9F); }
+    { oledCommand(0x9F); }
   else
-    { ssd1306_command(0xCF); }
+    { oledCommand(0xCF); }
 
 #elif defined SSD1306_96_16
-  ssd1306_command(SSD1306_SETCOMPINS);                    // 0xDA
-  ssd1306_command(0x2);   //ada x12
-  ssd1306_command(SSD1306_SETCONTRAST);                   // 0x81
+  oledCommand(SSD1306_SETCOMPINS);                    // 0xDA
+  oledCommand(0x2);   //ada x12
+  oledCommand(SSD1306_SETCONTRAST);                   // 0x81
   if (vccstate == SSD1306_EXTERNALVCC)
-    { ssd1306_command(0x10); }
+    { oledCommand(0x10); }
   else
-    { ssd1306_command(0xAF); }
+    { oledCommand(0xAF); }
 
 #endif
 
-  ssd1306_command(SSD1306_SETPRECHARGE);                  // 0xd9
+  oledCommand(SSD1306_SETPRECHARGE);                  // 0xd9
   if (vccstate == SSD1306_EXTERNALVCC)
-    { ssd1306_command(0x22); }
+    { oledCommand(0x22); }
   else
-    { ssd1306_command(0xF1); }
-  ssd1306_command(SSD1306_SETVCOMDETECT);                 // 0xDB
-  ssd1306_command(0x40);
-  ssd1306_command(SSD1306_DISPLAYALLON_RESUME);           // 0xA4
-  ssd1306_command(SSD1306_NORMALDISPLAY);                 // 0xA6
+    { oledCommand(0xF1); }
+  oledCommand(SSD1306_SETVCOMDETECT);                 // 0xDB
+  oledCommand(0x40);
+  oledCommand(SSD1306_DISPLAYALLON_RESUME);           // 0xA4
+  oledCommand(SSD1306_NORMALDISPLAY);                 // 0xA6
 
-  ssd1306_command(SSD1306_DEACTIVATE_SCROLL);
+  oledCommand(SSD1306_DEACTIVATE_SCROLL);
 
-  ssd1306_command(SSD1306_DISPLAYON);//--turn on oled panel
+  oledCommand(SSD1306_DISPLAYON);//--turn on oled panel
 }
 
-void SSD1306_StartScrollRight(uint8_t start, uint8_t stop) {
-  ssd1306_command(SSD1306_RIGHT_HORIZONTAL_SCROLL);
-  ssd1306_command(0X00);
-  ssd1306_command(start);  // start page
-  ssd1306_command(0X00);
-  ssd1306_command(stop);   // end page
-  ssd1306_command(0X00);
-  ssd1306_command(0XFF);
-  ssd1306_command(SSD1306_ACTIVATE_SCROLL);
+// The next scroll functions are just intended to create the scrolling effect
+void oledScrollRight(uint8_t start, uint8_t stop) 
+{
+  oledCommand(SSD1306_RIGHT_HORIZONTAL_SCROLL);
+  oledCommand(0X00);
+  oledCommand(start);  // start page
+  oledCommand(0X00);
+  oledCommand(stop);   // end page
+  oledCommand(0X00);
+  oledCommand(0XFF);
+  oledCommand(SSD1306_ACTIVATE_SCROLL);
 }
 
-void SSD1306_StartScrollLeft(uint8_t start, uint8_t stop) {
-  ssd1306_command(SSD1306_LEFT_HORIZONTAL_SCROLL);
-  ssd1306_command(0X00);
-  ssd1306_command(start);
-  ssd1306_command(0X00);
-  ssd1306_command(stop);
-  ssd1306_command(0X00);
-  ssd1306_command(0XFF);
-  ssd1306_command(SSD1306_ACTIVATE_SCROLL);
+void oledScrollLeft(uint8_t start, uint8_t stop) 
+{
+  oledCommand(SSD1306_LEFT_HORIZONTAL_SCROLL);
+  oledCommand(0X00);
+  oledCommand(start);
+  oledCommand(0X00);
+  oledCommand(stop);
+  oledCommand(0X00);
+  oledCommand(0XFF);
+  oledCommand(SSD1306_ACTIVATE_SCROLL);
 }
 
-void SSD1306_StartScrollDiagRight(uint8_t start, uint8_t stop) {
-  ssd1306_command(SSD1306_SET_VERTICAL_SCROLL_AREA);
-  ssd1306_command(0X00);
-  ssd1306_command(SSD1306_LCDHEIGHT);
-  ssd1306_command(SSD1306_VERTICAL_AND_RIGHT_HORIZONTAL_SCROLL);
-  ssd1306_command(0X00);
-  ssd1306_command(start);
-  ssd1306_command(0X00);
-  ssd1306_command(stop);
-  ssd1306_command(0X01);
-  ssd1306_command(SSD1306_ACTIVATE_SCROLL);
+void oledScrollDiagRight(uint8_t start, uint8_t stop) 
+{
+  oledCommand(SSD1306_SET_VERTICAL_SCROLL_AREA);
+  oledCommand(0X00);
+  oledCommand(SSD1306_LCDHEIGHT);
+  oledCommand(SSD1306_VERTICAL_AND_RIGHT_HORIZONTAL_SCROLL);
+  oledCommand(0X00);
+  oledCommand(start);
+  oledCommand(0X00);
+  oledCommand(stop);
+  oledCommand(0X01);
+  oledCommand(SSD1306_ACTIVATE_SCROLL);
 }
 
-void SSD1306_StartScrollDiagLeft(uint8_t start, uint8_t stop) {
-  ssd1306_command(SSD1306_SET_VERTICAL_SCROLL_AREA);
-  ssd1306_command(0X00);
-  ssd1306_command(SSD1306_LCDHEIGHT);
-  ssd1306_command(SSD1306_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL);
-  ssd1306_command(0X00);
-  ssd1306_command(start);
-  ssd1306_command(0X00);
-  ssd1306_command(stop);
-  ssd1306_command(0X01);
-  ssd1306_command(SSD1306_ACTIVATE_SCROLL);
+void oledScrollDiagLeft(uint8_t start, uint8_t stop) 
+{
+  oledCommand(SSD1306_SET_VERTICAL_SCROLL_AREA);
+  oledCommand(0X00);
+  oledCommand(SSD1306_LCDHEIGHT);
+  oledCommand(SSD1306_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL);
+  oledCommand(0X00);
+  oledCommand(start);
+  oledCommand(0X00);
+  oledCommand(stop);
+  oledCommand(0X01);
+  oledCommand(SSD1306_ACTIVATE_SCROLL);
 }
 
-void SSD1306_StopScroll(void) {
-  ssd1306_command(SSD1306_DEACTIVATE_SCROLL);
+void oledStopScroll(void) 
+{
+  oledCommand(SSD1306_DEACTIVATE_SCROLL);
 }
 
-void SSD1306_Dim(int1 dim) {
+// This function will dim the display
+void oledDim(int1 dim) 
+{
   uint8_t contrast;
   if (dim)
     contrast = 0; // Dimmed display
-  else {
+  else 
+  {
     if (_vccstate == SSD1306_EXTERNALVCC)
       contrast = 0x9F;
     else
@@ -329,103 +343,163 @@ void SSD1306_Dim(int1 dim) {
   }
   // the range of contrast to too small to be really useful
   // it is useful to dim the display
-  ssd1306_command(SSD1306_SETCONTRAST);
-  ssd1306_command(contrast);
+  oledCommand(SSD1306_SETCONTRAST);
+  oledCommand(contrast);
 }
 
-void SSD1306_SetTextWrap(int1 w) {
-  wrap = w;
+// If text wrap is activated, the cursor will go to the next line automatically
+// when it reaches the last column, if it's not activated, the text in that line will
+// be overwritten from left to right
+void oledSetTextWrap(uint8_t w) 
+{
+   if (w == 0)
+   {
+      wrap = 0;
+   }
+   else
+   {
+      wrap = 1;
+   }
 }
 
-void SSD1306_InvertDisplay(int1 i) {
+// It will invert the display, white pixels become black and black pixels become white
+void oledInvertDisplay(int1 i) 
+{
   if (i)
-    ssd1306_command(SSD1306_INVERTDISPLAY_);
+    oledCommand(SSD1306_INVERTDISPLAY_);
   else
-    ssd1306_command(SSD1306_NORMALDISPLAY);
+    oledCommand(SSD1306_NORMALDISPLAY);
 }
 
-void SSD1306_GotoXY(uint8_t x, uint8_t y) {
-  if((x > 21) || y > 8)
-    return;
+// This function has effect only on the oledPrint function. You can place the character in any column (x)
+// but the lines (y) can only be selected in groups of 8 pixels in what we call rows.
+void oledXY(uint8_t x, uint8_t y) 
+{
+   // sanity check to ensure that if the user tries to write beyond the valid boundaries, the
+   // function will have no effect
+   #if defined SSD1306_128_64 
+   if((x > 123) || y > 7)
+      return;
+   #elif defined SSD1306_128_32
+   if((x > 123) || y > 3)
+      return;
+   #elif defined SSD1306_96_16
+   if((x > 91) || y > 1)
+      return;
+   #endif
+
   x_pos = x;
   y_pos = y;
 }
 
-void SSD1306_PutC(uint8_t c) {
-  uint8_t font_c;
-  if((c < ' ') || (c > '~'))
-    c = '?';
-  ssd1306_command(SSD1306_COLUMNADDR);
-  ssd1306_command(6 * (x_pos - 1));
-  ssd1306_command(6 * (x_pos - 1) + 4); // Column end address (127 = reset)
-
-  ssd1306_command(SSD1306_PAGEADDR);
-  ssd1306_command(y_pos - 1); // Page start address (0 = reset)
-  ssd1306_command(y_pos - 1); // Page end address
-  
-  I2C_Start(SSD1306_STREAM);
-  I2C_Write(SSD1306_STREAM, _i2caddr);
-  I2C_Write(SSD1306_STREAM, 0x40);
-  
-  for(uint8_t i = 0; i < 5; i++ ) {
-    if(c < 'S')
-      font_c = font[(c - 32) * 5 + i];
-    else
-      font_c = font2[(c - 'S') * 5 + i];
-  
-    I2C_Write(SSD1306_STREAM, font_c);
-  }
-  I2C_Stop(SSD1306_STREAM);
-
-  x_pos = x_pos % 21 + 1;
-  if (wrap && (x_pos == 1))
-    y_pos = y_pos % 8 + 1;
-
-}
-
-void SSD1306_PutCustomC(char *c) {
+// This is a average print function, you can call it with a whole string such as
+// "hello world", not only a single character. This function will automatically handle 
+// the cursor control for you.
+void oledPrint(uint8_t c) 
+{
+   // ignore it, if x-y coordinates are out of valid boundaries
+   #if defined SSD1306_128_64 
+   if((x_pos > 123) || y_pos > 7)
+      return;
+   #elif defined SSD1306_128_32
+   if((x_pos > 123) || y_pos > 3)
+      return;
+   #elif defined SSD1306_96_16
+   if((x_pos > 91) || y_pos > 1)
+      return;
+   #endif
+   
+   // if it's not a printable character, ignore it.
+   if((c < ' ') || (c > '~'))
+      return;
+    
   uint8_t line;
-  ssd1306_command(SSD1306_COLUMNADDR);
-  ssd1306_command(6 * (x_pos - 1));
-  ssd1306_command(6 * (x_pos - 1) + 4); // Column end address (127 = reset)
 
-  ssd1306_command(SSD1306_PAGEADDR);
-  ssd1306_command(y_pos - 1); // Page start address (0 = reset)
-  ssd1306_command(y_pos - 1); // Page end address
-  
-  I2C_Start(SSD1306_STREAM);
-  I2C_Write(SSD1306_STREAM, _i2caddr);
-  I2C_Write(SSD1306_STREAM, 0x40);
-  
-  for(uint8_t i = 0; i < 5; i++ ) {
-    line = c[i];
+   // Select which columns and pages are going to be modified
+   oledCommand(SSD1306_COLUMNADDR);
+   oledCommand(x_pos);
+   oledCommand(x_pos + 4); // Column end address (127 = reset)
+   
+   oledCommand(SSD1306_PAGEADDR);
+   oledCommand(y_pos); // Page start address (0 = reset)
+   oledCommand(y_pos); // Page end address
+   
+   I2C_Start(SSD1306_STREAM);
+   I2C_Write(SSD1306_STREAM, _i2caddr);
+   I2C_Write(SSD1306_STREAM, 0x40);
+   
+  // Each character consists of 5 lines, so you have to send each line as a byte
+  for(uint8_t i = 0; i < 5; i++ ) 
+  {
+    if (c < 'S')
+    {
+      line = font[(c - 32) * 5 + i];
+    }
+    else
+    {
+      line = font2[(c - 'S') * 5 + i];
+    }
     I2C_Write(SSD1306_STREAM, line);
   }
+  
   I2C_Stop(SSD1306_STREAM);
 
-  x_pos = x_pos % 21 + 1;
-  if (wrap && (x_pos == 1))
-    y_pos = y_pos % 8 + 1;
+   // This handles the process of calculating where to place the next character
+   #if defined SSD1306_128_64
+   x_pos += 6;
+   if (x_pos > 123)
+   {
+      x_pos = 0;
+      if (wrap)
+      {
+         y_pos = (y_pos + 1) % 8;
+      }
+   }
 
+   #elif defined SSD1306_128_32
+   x_pos += 6;
+   if (x_pos > 123)
+   {
+      x_pos = 0;
+      if (wrap)
+      {
+         y_pos = (y_pos + 1) % 4;
+      }
+   }
+   #elif defined SSD1306_96_16
+   x_pos += 6;
+   if (x_pos > 91)
+   {
+      x_pos = 0;
+      if (wrap)
+      {
+         y_pos = 1 - y_pos;
+      }
+   }
+   #endif
 }
 
-void SSD1306_ClearDisplay(uint8_t content = 0x00) {
-  ssd1306_command(SSD1306_COLUMNADDR);
-  ssd1306_command(0);    // Column start address
+// This is a optimized function that replaces the original functions SSD1306_ClearDisplay
+// and SSD1306_FillScreen just by using a optional argument with a default value of 0x00 
+// meaning black. But of course it can be any 8-bit value that you want.
+void oledClear(uint8_t content = 0x00) 
+{
+  oledCommand(SSD1306_COLUMNADDR);
+  oledCommand(0);    // Column start address
   #if defined SSD1306_128_64 || defined SSD1306_128_32
-  ssd1306_command(127);  // Column end address
+  oledCommand(127);  // Column end address
   #else
-    ssd1306_command(95); // Column end address
+    oledCommand(95); // Column end address
   #endif
 
-  ssd1306_command(SSD1306_PAGEADDR);
-  ssd1306_command(0);   // Page start address (0 = reset)
+  oledCommand(SSD1306_PAGEADDR);
+  oledCommand(0);   // Page start address (0 = reset)
   #if defined SSD1306_128_64
-  ssd1306_command(7);   // Page end address
+  oledCommand(7);   // Page end address
   #elif defined SSD1306_128_32
-  ssd1306_command(3);   // Page end address
+  oledCommand(3);   // Page end address
   #elif defined SSD1306_96_16
-  ssd1306_command(1);   // Page end address
+  oledCommand(1);   // Page end address
   #endif
 
   I2C_Start(SSD1306_STREAM);
@@ -438,45 +512,17 @@ void SSD1306_ClearDisplay(uint8_t content = 0x00) {
   I2C_Stop(SSD1306_STREAM);
 }
 
-
-void SSD1306_Bitmap(int16 bitmap) // const uint8_t *bitmap
+// This function handles the process of printing a bitmap of any size in the form of an array stored in program
+// memory, the first argument is the address to that array in the ROM (e.g.: &logo)
+// the second and third arguments are just the width that are automatically generated by my windows program
+// for this just keep in mind that the height of the bitmap will always be a multiple of 8.
+// finally, the x and y coordinates will tell the function where to place the bitmap, just make sure that you 
+// are within valid boundaries, because otherwise the function will have no effect
+void oledBitmap(int16 bitmap, uint16_t width, uint16_t height, uint8_t x = 0, uint8_t y = 0)
 {
-  ssd1306_command(SSD1306_COLUMNADDR);
-  ssd1306_command(0);    // Column start address
-  #if defined SSD1306_128_64 || defined SSD1306_128_32
-  ssd1306_command(127);  // Column end address
-  #else
-    ssd1306_command(95); // Column end address
-  #endif
-
-  ssd1306_command(SSD1306_PAGEADDR);
-  ssd1306_command(0);   // Page start address (0 = reset)
-  #if defined SSD1306_128_64
-  ssd1306_command(7);   // Page end address
-  #elif defined SSD1306_128_32
-  ssd1306_command(3);   // Page end address
-  #elif defined SSD1306_96_16
-  ssd1306_command(1);   // Page end address
-  #endif
-
-  I2C_Start(SSD1306_STREAM);
-  I2C_Write(SSD1306_STREAM, _i2caddr);
-  I2C_Write(SSD1306_STREAM, 0x40);
-
-  for(uint16_t i = 0; i < SSD1306_TOTALPAGES; i++)
-  {
-    uint8_t temp;
-    read_program_memory(bitmap + i, &temp, 1); // read from ROM to RAM 
-    I2C_Write(SSD1306_STREAM, temp);
-  }
- 
-  I2C_Stop(SSD1306_STREAM);
-}
-
-void SSD1306_TinyBitmap(int16 bitmap, uint8_t x, uint8_t y, uint16_t width, uint16_t height) 
-{
+   // verifies that the bitmap is within valid boundaries
   #if  defined SSD1306_128_64
-  if (x > 127 || x + width - 1 > 127)
+  if (x > 127 || x + width - 1 > 127) 
   {
    return;
   }
@@ -504,18 +550,22 @@ void SSD1306_TinyBitmap(int16 bitmap, uint8_t x, uint8_t y, uint16_t width, uint
   }
   #endif
   
-  ssd1306_command(SSD1306_COLUMNADDR);
-  ssd1306_command(x);    // Column start address, minimum 0
-  ssd1306_command(x + width - 1); // Column end address, maximum 127 or 95 only for the 96x16 screen
+  // tells the driver where it is going to place the bitmap
+  oledCommand(SSD1306_COLUMNADDR);
+  oledCommand(x);    // Column start address, minimum 0
+  oledCommand(x + width - 1); // Column end address, maximum 127 or 95 only for the 96x16 screen
 
-  ssd1306_command(SSD1306_PAGEADDR);
-  ssd1306_command(y);   // Page start address, minimum 0
-  ssd1306_command(y + height - 1);   // Page end address, maximum 7 (for 128x64 display), 3 (for 128x32 display) and 1 for (96x16) display
+  oledCommand(SSD1306_PAGEADDR);
+  oledCommand(y);   // Page start address, minimum 0
+  oledCommand(y + height - 1);   // Page end address, maximum 7 (for 128x64 display), 3 (for 128x32 display) and 1 for (96x16) display
 
   I2C_Start(SSD1306_STREAM);
   I2C_Write(SSD1306_STREAM, _i2caddr);
   I2C_Write(SSD1306_STREAM, 0x40);
+
+   // calculates the size of the bitmap
   uint16_t size = width * height;
+  // and sends the bitmap one byte at a time (8 pixels)
   for(uint16_t i = 0; i < size; i++)
   {
     uint8_t temp;
@@ -524,4 +574,3 @@ void SSD1306_TinyBitmap(int16 bitmap, uint8_t x, uint8_t y, uint16_t width, uint
   }
   I2C_Stop(SSD1306_STREAM);
 }
-
